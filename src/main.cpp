@@ -6,8 +6,7 @@
 #include <MMA7660.h>
 #include <U8g2lib.h>
 
-#define servo1 15
-#define servo2 14
+
 #define SENSOR_PERIOD 50
 #define BALL_UPDATE_PERIOD 20
 #define DISP_Y_MAX 32
