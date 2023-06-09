@@ -36,11 +36,11 @@ void task_read_sensors(void *pvParameters)
   int8_t x, y, z;
   while (1)
   {
+    // we have to avoid pre-emption while accessing the i2c bus
     vTaskEnterCritical();
     accel.getXYZ(&x, &y, &z);
     vTaskExitCritical();
-    // accel.getAllData(&data);
-    // accel.getAcceleration(data);
+
     avg_x += x;
     avg_y += y;
     if (x > max_x)
@@ -53,12 +53,7 @@ void task_read_sensors(void *pvParameters)
     res.x = map(avg_x / count, -1 * max_x, max_x, 0, DISP_Y_MAX);
     res.y = map(avg_y / count, -1 * max_y, max_y, 0, DISP_Y_MAX);
     xQueueSend(sensor_result, &res, 0);
-    // Serial1.print(y);
-    // Serial1.print(",");
-    // Serial1.print(x);
-    // Serial1.print(",");
-    // Serial1.print(count);
-    // Serial1.println();
+
     if (count >= 2)
     {
       count = 0;
@@ -83,7 +78,6 @@ void task_draw_display(void *pvParameters)
     if (xQueueReceive(sensor_result, &result, 0))
     {
       oled.clearBuffer();
-
       oled.drawBox(1, result.y - 1, 3, 8);
       oled.drawBox(125, result.x - 1, 3, 8);
     }
@@ -148,37 +142,28 @@ void task_draw_display(void *pvParameters)
       ball_x = disp_cx;
       ball_y = disp_cy;
     }
-    Serial1.print(ball_x);
-    Serial1.print(",");
-    Serial1.print(ball_y);
-    Serial1.print(",");
-    Serial1.print(ball_dx);
-    Serial1.print(",");
-    Serial1.print(ball_dy);
-    Serial1.println();
 
     oled.drawPixel(ball_x, ball_y);
+
+    // we have to avoid pre-emption while accessing the i2c bus
     vTaskEnterCritical();
     oled.sendBuffer();
     vTaskExitCritical();
+
     vTaskDelay(BALL_UPDATE_PERIOD / portTICK_PERIOD_MS);
   }
 }
 
 void setup()
 {
-  Serial1.begin(9600);
+
   Wire.setSDA(PICO_DEFAULT_I2C_SDA_PIN);
   Wire.setSCL(PICO_DEFAULT_I2C_SCL_PIN);
-
-  // Wire.setClock(100 * 1000);
-  Serial1.println("accel");
-
-  Serial1.println("oled");
-
+  Wire.setClock(100 * 1000);
+  // for reasons unknown we have to initialise these in this order
+  // oled first then accelerometer
   oled.begin();
   accel.init();
-  Serial1.println("oled done ");
 
   sensor_result = xQueueCreate(5, sizeof(SensorResult *));
 
@@ -188,47 +173,4 @@ void setup()
 
 void loop()
 {
-  // Serial1.println("Starting loop");
-  // int avg_x = 0;
-  // int avg_y = 0;
-  // int max_x = 10, max_y = 10;
-  // int count = 0;
-  // SensorResult res;
-  // int8_t x, y, z;
-
-  // while (1)
-  // {
-  //   accel.getXYZ(&x, &y, &z);
-  //   // accel.getAllData(&data);
-  //   // accel.getAcceleration(data);
-  //   avg_x += x;
-  //   avg_y += y;
-  //   if (x > max_x)
-  //     max_x = x;
-  //   if (y > max_y)
-  //     max_y = y;
-
-  //   count++;
-
-  //   res.x = map(x, -1 * max_x, max_x, (DISP_X_MAX / 2) - DISP_Y_MAX, (DISP_X_MAX / 2) + DISP_Y_MAX);
-  //   res.y = map(y, -1 * max_y, max_y, 0, DISP_Y_MAX);
-
-  //   Serial1.print(avg_x / count);
-  //   Serial1.print(",");
-  //   Serial1.print(avg_y / count);
-  //   Serial1.print(",");
-  //   Serial1.print(count);
-  //   Serial1.println();
-
-  //   oled.drawPixel(res.x, res.y);
-  //   oled.sendBuffer();
-  //   if (count >= 50)
-  //   {
-  //     oled.clearBuffer();
-  //     count = 0;
-  //     avg_x = 0;
-  //     avg_y = 0;
-  //   }
-  //   delay(BALL_UPDATE_PERIOD);
-  // }
 }
